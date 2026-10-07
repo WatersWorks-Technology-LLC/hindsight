@@ -655,4 +655,59 @@ describe("guarded additive import plans", () => {
     expect(f.guard.create).toHaveBeenCalledTimes(1);
     expect((await f.service.rollbackPlan(next.plan_id, "bank")).status).toBe("blocked");
   });
+  it("waits for the prior worker lease to settle before resuming a persisted partial plan", async () => {
+    const f = await fixture();
+    const p = await f.service.prepare(f.job.id, "bank", [0]);
+    let quota = true;
+    const originalFetch = f.deps.fetcher;
+    f.deps.fetcher = (async (...args: Parameters<typeof fetch>) =>
+      quota && String(args[0]).endsWith("/documents/source-0.md")
+        ? json({}, 429)
+        : originalFetch(...args)) as typeof fetch;
+    const internals = f.service as unknown as {
+      release: (plan: unknown) => Promise<void>;
+    };
+    const originalRelease = internals.release.bind(f.service);
+    let releaseEntered = false;
+    let hold = true;
+    let settle!: () => void;
+    const held = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    internals.release = async (plan) => {
+      if (hold) {
+        releaseEntered = true;
+        await held;
+      }
+      await originalRelease(plan);
+    };
+    await f.service.confirm(p.plan_id, approval(p));
+    await vi.waitFor(() => expect(releaseEntered).toBe(true));
+    expect((await f.service.get(p.plan_id))?.status).toBe("partial");
+    quota = false;
+    let resumeSettled = false;
+    let resumeError: unknown;
+    const resume = f.service.confirm(p.plan_id, approval(p)).then(
+      () => {
+        resumeSettled = true;
+      },
+      (error) => {
+        resumeError = error;
+        resumeSettled = true;
+      }
+    );
+    try {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(resumeSettled).toBe(false);
+      expect(f.guard.create).not.toHaveBeenCalled();
+    } finally {
+      hold = false;
+      settle();
+    }
+    await resume;
+    expect(resumeError).toBeUndefined();
+    await finish(f.service, p.plan_id);
+    expect((await f.service.get(p.plan_id))?.status).toBe("completed");
+    expect(f.guard.create).toHaveBeenCalledTimes(1);
+  });
 });

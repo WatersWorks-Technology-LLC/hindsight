@@ -76,3 +76,9 @@ hindsight-integrations/_drafts/
 
 blog-post*
 .worktrees/
+
+# Cleaner source snapshots, import backups and candidate outputs contain private data.
+/runs/
+/output/
+/audit/
+/evidence/

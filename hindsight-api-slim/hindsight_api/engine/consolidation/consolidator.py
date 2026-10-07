@@ -20,6 +20,7 @@ import copy
 import json
 import logging
 import math
+import os
 import time
 import uuid
 from collections import defaultdict
@@ -1314,6 +1315,13 @@ def _build_response_model(
     can disable the schema hint for those backends; the prompt capacity note and
     post-response truncation still enforce the observation cap.
     """
+    if os.environ.get("HINDSIGHT_API_SOURCE_QUOTE_INSIGHTS") == "1":
+        class _SourceOnlyResponse(_ConsolidationBatchResponse):
+            creates: list[_CreateAction] = Field(default=[], max_length=2)
+            updates: list[_UpdateAction] = Field(default=[], max_length=0)
+            deletes: list[_DeleteAction] = Field(default=[], max_length=0)
+        return _SourceOnlyResponse
+
     if not supports_max_items or max_creates is None or max_creates < 0:
         return _ConsolidationBatchResponse
 
@@ -1530,6 +1538,7 @@ async def _fetch_unconsolidated_rows(
         {
             "id": uuid.UUID(m.unit_id),
             "text": m.text,
+            "document_id": m.document_id,
             "fact_type": m.fact_type,
             "occurred_start": m.occurred_start,
             "occurred_end": m.occurred_end,
@@ -2569,10 +2578,14 @@ async def _process_memory_batch(
             )
 
     # 3. Single LLM call
+    prompt_memories = memories
+    if os.environ.get("HINDSIGHT_API_SOURCE_QUOTE_INSIGHTS") == "1":
+        from .source_quote_guard import prompt_sources
+        prompt_memories = prompt_sources(memories)
     t0 = time.time()
     llm_result = await _consolidate_batch_with_llm(
         llm_config=llm_config,
-        memories=memories,
+        memories=prompt_memories,
         union_observations=union_observations,
         union_source_facts=union_source_facts,
         config=config,
@@ -2583,6 +2596,10 @@ async def _process_memory_batch(
         perf.record_timing("llm", time.time() - t0)
         perf.record_llm_call(llm_result.obs_count, llm_result.prompt_chars)
         perf.record_llm_batch_failures(llm_result.failed_attempts)
+
+    if os.environ.get("HINDSIGHT_API_SOURCE_QUOTE_INSIGHTS") == "1":
+        from .source_quote_guard import guard_actions
+        guard_actions(llm_result, memories, bank_id)
 
     # 4. Prepare every action connection-free, then apply them all in ONE transaction.
     #
@@ -2611,7 +2628,7 @@ async def _process_memory_batch(
     # observation into a twin — the create-time guard can't see this). The trace operation/scope is
     # "consolidation_dedup" (routes through the consolidation concurrency bucket via llm_wrapper's
     # "consolidation" prefix; recorded distinctly in llm_requests).
-    dedup_enabled = _dedup_active(config)
+    dedup_enabled = _dedup_active(config) and os.environ.get("HINDSIGHT_API_SOURCE_QUOTE_INSIGHTS") != "1"
     dedup_llm_config = (
         memory_engine._consolidation_llm_config.with_config(config, bank_id=bank_id, operation="consolidation_dedup")
         if dedup_enabled
@@ -3491,6 +3508,10 @@ async def _consolidate_batch_with_llm(
     system_prompt = build_consolidation_system_prompt(
         llm_output_language=config.llm_output_language if config is not None else None,
     )
+    if os.environ.get("HINDSIGHT_API_SOURCE_QUOTE_INSIGHTS") == "1":
+        from .source_quote_guard import SOURCE_ONLY_SYSTEM
+        system_prompt = SOURCE_ONLY_SYSTEM
+
     user_content = build_consolidation_input(
         facts_text=facts_lines,
         observations_text=observations_text,

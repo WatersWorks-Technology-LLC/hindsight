@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { client } from "@/lib/api";
+import { CleanerIcon } from "./cleaner-progress";
 
 type NavItem =
   | "home"
@@ -26,6 +27,7 @@ type NavItem =
   | "reflect"
   | "data"
   | "documents"
+  | "cleaner"
   | "entities"
   | "knowledge"
   | "profile";
@@ -60,6 +62,7 @@ export function Sidebar({ currentTab, onTabChange }: SidebarProps) {
     { id: "recall" as NavItem, label: t("recall"), icon: Search },
     { id: "reflect" as NavItem, label: t("reflect"), icon: Sparkles },
     { id: "documents" as NavItem, label: t("documents"), icon: FileText },
+    { id: "cleaner" as NavItem, label: "Document cleaner", icon: Sparkles },
     { id: "entities" as NavItem, label: t("entities"), icon: Users },
     { id: "profile" as NavItem, label: tBank("bankConfiguration"), icon: Settings },
   ];
@@ -125,7 +128,7 @@ export function Sidebar({ currentTab, onTabChange }: SidebarProps) {
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {item.id === "cleaner" ? <CleanerIcon className="w-6 h-6 flex-shrink-0" /> : <Icon className="w-5 h-5 flex-shrink-0" />}
                   {!isCollapsed && <span>{item.label}</span>}
                 </Link>
               </li>

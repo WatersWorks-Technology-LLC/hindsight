@@ -2,18 +2,15 @@ package hindsight
 
 import (
 	"context"
-	"os"
 	"testing"
 )
 
 // Test that the client can handle null values in responses
 func TestNullHandling(t *testing.T) {
-	apiURL := os.Getenv("HINDSIGHT_API_URL")
-	if apiURL == "" {
-		apiURL = "http://localhost:8888"
-	}
+	apiURL := isolatedSDKTestURL(t)
 
 	cfg := NewConfiguration()
+	cfg.HTTPClient = isolatedSDKHTTPClient()
 	cfg.Servers = ServerConfigurations{
 		{URL: apiURL},
 	}

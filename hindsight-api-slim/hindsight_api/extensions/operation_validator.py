@@ -398,6 +398,8 @@ class BankReadOperation(StrEnum):
 class BankWriteOperation(StrEnum):
     """Bank-scoped write operation names passed to validate_bank_write."""
 
+    CLEANER_CREATE = "cleaner_create"
+    CLEANER_ROLLBACK = "cleaner_rollback"
     CANCEL_OPERATION = "cancel_operation"
     CLEAR_MENTAL_MODEL = "clear_mental_model"
     CLEAR_OBSERVATIONS = "clear_observations"

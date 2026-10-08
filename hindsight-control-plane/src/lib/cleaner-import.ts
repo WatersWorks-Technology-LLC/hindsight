@@ -2,9 +2,31 @@
  * A verified server guard must provide atomic source/version checks + create-only semantics.
  */
 import { spawn } from "node:child_process";
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  ATOMIC_MAX_PAYLOAD_BYTES,
+  atomicCandidateWithinAdmission,
+  canonical,
+  hash,
+  type AtomicGuard,
+  type Capabilities,
+  type Condition,
+  type RollbackCommand,
+} from "./cleaner-atomic-protocol";
+export {
+  ATOMIC_MAX_PAYLOAD_BYTES,
+  ATOMIC_MAX_CANDIDATE_CODE_POINTS,
+  atomicCandidateWithinAdmission,
+  canonical,
+  hash,
+  type AtomicGuard,
+  type Capabilities,
+  type Condition,
+  type RollbackCommand,
+} from "./cleaner-atomic-protocol";
+import { CleanerAtomicAdapter, type AtomicAdapterOptions } from "./cleaner-atomic-adapter";
 import { getDataplaneHeaders } from "./hindsight-client";
 import { cleanerBankUrl, cleanerServiceUrl } from "./cleaner-dataplane";
 import { getJob, isJobActive, MAX_BYTES, validBank, type Job } from "./cleaner-jobs";
@@ -30,72 +52,6 @@ type Status =
   | "paused"
   | "uncertain"
   | "failed";
-export interface Capabilities {
-  atomic_create: boolean;
-  atomic_source_check: boolean;
-  conditional_delete: boolean;
-  contract_id: string;
-  reason?: string;
-}
-export interface Condition {
-  execution_config_sha256: string;
-  bank_id: string;
-  source_id: string;
-  source_sha256: string;
-  source_updated_at: string;
-  source_metadata_sha256: string;
-  target_id: string;
-  target_sha256: string;
-  owner_key: string;
-  operation_id: string;
-  payload_sha256: string;
-}
-export interface RollbackCommand {
-  condition: Condition;
-  expected_document_metadata_sha256: string;
-  expected_updated_at: string;
-  rollback_operation_id: string;
-  rollback_payload_sha256: string;
-  created_receipt_sha256: string;
-}
-export interface AtomicGuard {
-  capabilities(bank: string): Promise<Capabilities>;
-  create(
-    command: { condition: Condition; payload_json: string },
-    signal: AbortSignal
-  ): Promise<{ accepted: boolean; operation_id: string; reused?: boolean }>;
-  operation?(
-    condition: Condition,
-    signal: AbortSignal
-  ): Promise<{
-    operation_id: string;
-    status: string;
-    payload_sha256: string;
-    created?: boolean;
-    target_id?: string;
-    owner_key?: string;
-    target_sha256?: string;
-    metadata_sha256?: string;
-    graph_sha256?: string;
-    updated_at?: string;
-    rollback_operation_id?: string | null;
-    rollback_payload_sha256?: string | null;
-    created_receipt_sha256?: string | null;
-  }>;
-  remove?(
-    command: RollbackCommand,
-    signal: AbortSignal
-  ): Promise<{ deleted: boolean; rollback_operation_id: string }>;
-  rollbackOperation?(
-    command: RollbackCommand,
-    signal: AbortSignal
-  ): Promise<{
-    rollback_operation_id: string;
-    rollback_payload_sha256: string;
-    status: string;
-    deleted: boolean;
-  }>;
-}
 interface SourceVersion {
   id: string;
   sha256: string;
@@ -170,37 +126,14 @@ export interface ImportDependencies {
   guard?: AtomicGuard;
   pollMilliseconds?: number;
   pollAttempts?: number;
+  maxCandidateBytes?: number;
 }
 const OWNER = "hindsight-cleaner-v1";
 const uuid = (text: string) => {
   const h = hash(text);
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
 };
-export function hash(value: string | Uint8Array) {
-  return createHash("sha256").update(value).digest("hex");
-}
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
-  if (value && typeof value === "object")
-    return (
-      "{" +
-      Object.entries(value)
-        .filter(([, v]) => v !== undefined)
-        .sort(([a], [b]) => {
-          const x = Array.from(a),
-            y = Array.from(b);
-          for (let i = 0; i < Math.min(x.length, y.length); i++) {
-            const delta = x[i].codePointAt(0)! - y[i].codePointAt(0)!;
-            if (delta) return delta;
-          }
-          return x.length - y.length;
-        })
-        .map(([k, v]) => JSON.stringify(k) + ":" + canonical(v))
-        .join(",") +
-      "}"
-    );
-  return JSON.stringify(value) ?? "null";
-}
+
 function metadataHash(document: Json) {
   return hash(
     canonical({
@@ -403,6 +336,13 @@ export class ImportService {
   private workers = new Map<string, Promise<void>>();
   readonly directory: string;
   constructor(private dependencies: ImportDependencies) {
+    if (
+      dependencies.maxCandidateBytes !== undefined &&
+      (!Number.isSafeInteger(dependencies.maxCandidateBytes) ||
+        dependencies.maxCandidateBytes < 1 ||
+        dependencies.maxCandidateBytes > ATOMIC_MAX_PAYLOAD_BYTES)
+    )
+      throw new Error("Candidate write bound invalid");
     this.directory = path.join(dependencies.root, "runs", "imports");
   }
   private async capability(bank: string): Promise<Capabilities> {
@@ -547,6 +487,7 @@ export class ImportService {
   async prepare(jobId: string, bank: string, indexes: number[]) {
     if (
       !validBank(bank) ||
+      bank.length > 256 ||
       !Array.isArray(indexes) ||
       indexes.length < 1 ||
       indexes.length > 10 ||
@@ -597,6 +538,8 @@ export class ImportService {
     for (const index of indexes) {
       try {
         const record = job.records[index];
+        if (record && record.id.length > 1024)
+          throw new Error("Source identifier exceeds atomic protocol bound");
         if (record?.id.startsWith("cleaner-v1-"))
           throw new Error(
             "Candidate source is already a cleaner version; import original sources only"
@@ -698,6 +641,12 @@ export class ImportService {
           canonical(original.metadata?.tags ?? []) !== canonical(live.tags ?? [])
         )
           throw new Error("Source metadata changed or was not captured; create a fresh preview");
+        if (
+          !Array.isArray(live.tags) ||
+          live.tags.length > 100 ||
+          live.tags.some((tag) => typeof tag !== "string")
+        )
+          throw new Error("Source tags exceed atomic protocol bounds");
         if ((live.document_metadata as Json)?.cleaner_owner === OWNER)
           throw new Error(
             "Candidate source is already a cleaner-owned version; import original sources only"
@@ -740,6 +689,10 @@ export class ImportService {
         const items: Item[] = [];
         for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
           const segment = segments[segmentIndex];
+          if (!atomicCandidateWithinAdmission(String(segment.text)))
+            throw new Error(
+              "Candidate exceeds 50,000 Unicode code point admission bound; split into smaller reviewed source sections"
+            );
           const candidateHash = hash(String(segment.text));
           const identity = canonical({
             bank,
@@ -782,8 +735,12 @@ export class ImportService {
             ],
           };
           const payloadBytes = Buffer.from(JSON.stringify(payload));
-          if (payloadBytes.length > MAX_BYTES)
-            throw new Error("Candidate exceeds bounded write size");
+          if (
+            payloadBytes.length > (this.dependencies.maxCandidateBytes ?? ATOMIC_MAX_PAYLOAD_BYTES)
+          )
+            throw new Error(
+              "Candidate exceeds atomic payload write bound; source reads remain independent"
+            );
           const payloadName = `candidate-${index}-${segmentIndex}.json`;
           await writeFile(path.join(directory, payloadName), payloadBytes, {
             mode: 0o600,
@@ -807,6 +764,32 @@ export class ImportService {
           const target = await api(this.dependencies.fetcher, sourceUrl(bank, candidateId));
           if (target && !this.owned(plan, item, target))
             throw new Error("Deterministic target exists with different content or ownership");
+          if (
+            capability.atomic_create &&
+            capability.atomic_source_check &&
+            this.dependencies.guard?.operation
+          ) {
+            const receipt = await this.dependencies.guard.operation(
+              this.condition(plan, item),
+              plan.controller.signal
+            );
+            if (
+              receipt.operation_id !== item.operation_id ||
+              receipt.payload_sha256 !== item.payload_sha256
+            )
+              throw new Error(
+                "Candidate operation receipt binding changed; no resubmission prepared"
+              );
+            if (receipt.status === "rolled_back")
+              throw new Error(
+                "Candidate was previously rolled back; restoring the same unchanged candidate is unavailable"
+              );
+            const missing = receipt.status === "pending" && receipt.created === false && !target;
+            if (!missing && (receipt.status !== "completed" || receipt.created !== true || !target))
+              throw new Error(
+                "Candidate operation outcome is unavailable or uncertain; reconcile the existing plan before preparing another"
+              );
+          }
           items.push(item);
         }
         approved.candidate_ids = items.map((item) => item.candidate_id);
@@ -908,10 +891,7 @@ export class ImportService {
     if (!plan) throw new Error("Plan unavailable");
     this.confirmation(plan, input, reconcileOnly);
     if (plan.status === "running") return operationView(plan);
-    // Terminal state is persisted before the worker releases its lease. An
-    // explicit resume must wait for that cleanup instead of racing acquire.
-    const finishing = this.workers.get(plan.id);
-    if (finishing) await finishing;
+    await this.workers.get(plan.id);
     if (plan.status === "completed") return operationView(plan);
     if (plan.status === "blocked")
       throw new Error("Verified server import guard required or plan has no eligible candidates");
@@ -1439,7 +1419,21 @@ async function verifyCore(
   );
 }
 const globalLocal = globalThis as typeof globalThis & { cleanerImportService?: ImportService };
-export const importService = (globalLocal.cleanerImportService ||= new ImportService({
+export function createImportService(
+  dependencies: ImportDependencies,
+  options: { enableAtomicGuard?: boolean; adapter?: AtomicAdapterOptions } = {}
+) {
+  let guard = dependencies.guard;
+  if (!guard && (options.enableAtomicGuard ?? process.env.CLEANER_ENABLE_ATOMIC_IMPORTS === "1")) {
+    try {
+      guard = new CleanerAtomicAdapter({ fetcher: dependencies.fetcher, ...options.adapter });
+    } catch {
+      guard = undefined;
+    }
+  }
+  return new ImportService({ ...dependencies, guard });
+}
+export const importService = (globalLocal.cleanerImportService ||= createImportService({
   root: process.env.CLEANER_ROOT || path.resolve(process.cwd(), ".."),
   fetcher: fetch,
   getJob,

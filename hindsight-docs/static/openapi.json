@@ -13,6 +13,278 @@
     "version": "0.10.2"
   },
   "paths": {
+    "/v1/default/banks/{bank_id}/cleaner/capabilities": {
+      "get": {
+        "tags": [
+          "Cleaner"
+        ],
+        "summary": "Api Cleaner Capabilities",
+        "operationId": "cleaner_capabilities",
+        "parameters": [
+          {
+            "name": "bank_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bank Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/default/banks/{bank_id}/cleaner/operations": {
+      "post": {
+        "tags": [
+          "Cleaner"
+        ],
+        "summary": "Api Cleaner Create",
+        "operationId": "cleaner_create",
+        "parameters": [
+          {
+            "name": "bank_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bank Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}": {
+      "get": {
+        "tags": [
+          "Cleaner"
+        ],
+        "summary": "Api Cleaner Receipt",
+        "operationId": "cleaner_receipt",
+        "parameters": [
+          {
+            "name": "bank_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bank Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Operation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}/rollback": {
+      "post": {
+        "tags": [
+          "Cleaner"
+        ],
+        "summary": "Api Cleaner Rollback",
+        "operationId": "cleaner_rollback",
+        "parameters": [
+          {
+            "name": "bank_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bank Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Operation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -9786,6 +10058,46 @@
           "success": true
         }
       },
+      "Capabilities": {
+        "properties": {
+          "atomic_create": {
+            "type": "boolean",
+            "title": "Atomic Create"
+          },
+          "atomic_source_check": {
+            "type": "boolean",
+            "title": "Atomic Source Check"
+          },
+          "conditional_delete": {
+            "type": "boolean",
+            "title": "Conditional Delete"
+          },
+          "contract_id": {
+            "type": "string",
+            "title": "Contract Id",
+            "default": "cleaner-atomic-v1"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "atomic_create",
+          "atomic_source_check",
+          "conditional_delete"
+        ],
+        "title": "Capabilities"
+      },
       "ChildOperationStatus": {
         "properties": {
           "operation_id": {
@@ -10031,6 +10343,84 @@
         "example": {
           "deleted_count": 3
         }
+      },
+      "Condition": {
+        "properties": {
+          "execution_config_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Execution Config Sha256"
+          },
+          "bank_id": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Bank Id"
+          },
+          "source_id": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Source Id"
+          },
+          "source_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Source Sha256"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "title": "Source Updated At"
+          },
+          "source_metadata_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Source Metadata Sha256"
+          },
+          "target_id": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Target Id"
+          },
+          "target_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Target Sha256"
+          },
+          "owner_key": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Owner Key"
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operation Id"
+          },
+          "payload_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Payload Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "execution_config_sha256",
+          "bank_id",
+          "source_id",
+          "source_sha256",
+          "source_updated_at",
+          "source_metadata_sha256",
+          "target_id",
+          "target_sha256",
+          "owner_key",
+          "operation_id",
+          "payload_sha256"
+        ],
+        "title": "Condition"
       },
       "ConsolidationRequest": {
         "properties": {
@@ -10793,6 +11183,52 @@
         "title": "CreatePageRequest",
         "description": "Create a page (a mental model + tree node) under an optional parent folder."
       },
+      "CreateRequest": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "payload_json": {
+            "type": "string",
+            "maxLength": 8388608,
+            "minLength": 1,
+            "title": "Payload Json"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "condition",
+          "payload_json"
+        ],
+        "title": "CreateRequest"
+      },
+      "CreateResult": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true,
+            "title": "Accepted",
+            "default": true
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operation Id"
+          },
+          "reused": {
+            "type": "boolean",
+            "title": "Reused",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation_id"
+        ],
+        "title": "CreateResult"
+      },
       "CreateWebhookRequest": {
         "properties": {
           "url": {
@@ -10972,6 +11408,27 @@
           "message": "Deleted successfully",
           "success": true
         }
+      },
+      "DeleteResult": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true,
+            "title": "Deleted",
+            "default": true
+          },
+          "rollback_operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rollback Operation Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rollback_operation_id"
+        ],
+        "title": "DeleteResult"
       },
       "DirectiveListResponse": {
         "properties": {
@@ -17190,6 +17647,113 @@
         "title": "RecallScores",
         "description": "Per-result recall scores from different stages of the pipeline.\n\n``final`` is the value results are ranked by. The others are diagnostic and\ncan be filtered on via the recall ``min_scores`` request parameter. ``semantic``\nand ``keyword`` are the raw per-strategy retrieval scores (``None`` when that\nstrategy did not surface this result); ``reranker`` is the cross-encoder's\nnormalized relevance."
       },
+      "Receipt": {
+        "properties": {
+          "condition_sha256": {
+            "type": "string",
+            "title": "Condition Sha256"
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operation Id"
+          },
+          "payload_sha256": {
+            "type": "string",
+            "title": "Payload Sha256"
+          },
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "owner_key": {
+            "type": "string",
+            "title": "Owner Key"
+          },
+          "target_sha256": {
+            "type": "string",
+            "title": "Target Sha256"
+          },
+          "metadata_sha256": {
+            "type": "string",
+            "title": "Metadata Sha256"
+          },
+          "graph_sha256": {
+            "type": "string",
+            "title": "Graph Sha256"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "rolled_back"
+            ],
+            "title": "Status",
+            "default": "completed"
+          },
+          "created": {
+            "type": "boolean",
+            "const": true,
+            "title": "Created",
+            "default": true
+          },
+          "rollback_operation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollback Operation Id"
+          },
+          "rollback_payload_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollback Payload Sha256"
+          },
+          "created_receipt_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Receipt Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "condition_sha256",
+          "operation_id",
+          "payload_sha256",
+          "target_id",
+          "owner_key",
+          "target_sha256",
+          "metadata_sha256",
+          "graph_sha256",
+          "updated_at",
+          "rollback_operation_id",
+          "rollback_payload_sha256",
+          "created_receipt_sha256"
+        ],
+        "title": "Receipt"
+      },
       "RecoverConsolidationResponse": {
         "properties": {
           "retried_count": {
@@ -18167,6 +18731,48 @@
           "operation_id": "550e8400-e29b-41d4-a716-446655440000",
           "success": true
         }
+      },
+      "RollbackRequest": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "title": "Expected Updated At"
+          },
+          "rollback_operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rollback Operation Id"
+          },
+          "rollback_payload_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Rollback Payload Sha256"
+          },
+          "created_receipt_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Created Receipt Sha256"
+          },
+          "expected_document_metadata_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Expected Document Metadata Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "condition",
+          "expected_updated_at",
+          "rollback_operation_id",
+          "rollback_payload_sha256",
+          "created_receipt_sha256",
+          "expected_document_metadata_sha256"
+        ],
+        "title": "RollbackRequest"
       },
       "RunSettingModel": {
         "properties": {

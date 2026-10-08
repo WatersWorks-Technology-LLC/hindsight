@@ -22,9 +22,9 @@ is heuristic. Raw snapshots and versioned outputs remain private under ignored
 ## Runtime
 
 The Control Plane uses its existing Next.js/React dependencies. The reusable
-Python core uses the standard library; run it with Python 3.11 or newer. Configure
+Python core uses the standard library; the typed public integration requires Python 3.11 or newer. Configure
 `CLEANER_ROOT` to this repository root and optionally `CLEANER_PYTHON` to the desired
-Python executable. The local utility accepts only a validated loopback dataplane. Set `CLEANER_PYTHON` to a Python 3.11+ executable; the default uses `python3` from the server PATH. Bind the Control Plane to loopback when using this local utility.
+Python executable. The local utility accepts only a validated loopback dataplane.
 Existing server-side dataplane configuration and authentication must be used;
 credentials must not be included in browser responses, logs, or exported reports.
 
@@ -46,12 +46,33 @@ immutable backups and hashes, and requires explicit bank confirmation. Additive
 candidate versions retain the original source documents. Quarantine, omissions,
 stale provenance, conflicting versions, and bank mismatches block execution.
 
-Stock Hindsight 0.10.2 lacks an atomic create-only source-version import and
-conditional version/ownership deletion. Until a verified guarded service contract
-is available, execution fails closed and rollback remains a read-only plan. There
-is no fallback to ordinary retain or unconditional document deletion. Do not
-describe the dry-run controls as functional live import while this limitation
-remains. Unknown write outcomes must be reconciled before retrying.
+Stock Hindsight 0.10.2 lacks the required atomic create/source-version checks
+and conditional rollback. Install and independently verify the default-off
+`cleaner-atomic-v1` API extension before enabling the local Control Plane opt-in
+`CLEANER_ENABLE_ATOMIC_IMPORTS=1`. The API flag is
+`HINDSIGHT_API_ENABLE_CLEANER_ATOMIC_WRITES=true`; the service owner must coordinate
+backups, migration, provider compatibility and activation. Merely enabling the
+UI flag does not permit writes: verified bank-scoped capabilities are also required.
+There is no fallback to ordinary retain or unconditional document deletion.
+
+Review the complete dry-run diff and backup summary, type the exact bank, and
+acknowledge the plan before confirming import. Rollback requires a fresh plan
+and a separate confirmation, and can remove only unchanged versions created by
+that import. It cannot delete originals or preexisting documents.
+
+A lost response is reconciled through a durable receipt. If no receipt becomes
+available, the request remains uncertain and is never blindly replayed. A
+rolled-back deterministic operation remains tombstoned: this version has no
+restore action to re-import the same unchanged candidate. Private candidate
+backups remain available for inspection. Each candidate is limited to 50,000
+Unicode code points as well as the pinned atomic payload byte limit. These bounds
+are checked before confirmation and again by the transport and API. Huge sections
+may need manual splitting. Database lock waits are bounded; a
+contention failure requires a fresh state check rather than an unconditional retry.
+
+The guarded workflow has been tested with synthetic sources on an isolated real
+API and migrated PostgreSQL. This documentation does not authorize applying any
+real candidate; each real batch still requires the user's explicit UI action.
 
 ## Publication boundaries
 

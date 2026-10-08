@@ -17,6 +17,18 @@ import type {
   CancelOperationData,
   CancelOperationErrors,
   CancelOperationResponses,
+  CleanerCapabilitiesData,
+  CleanerCapabilitiesErrors,
+  CleanerCapabilitiesResponses,
+  CleanerCreateData,
+  CleanerCreateErrors,
+  CleanerCreateResponses,
+  CleanerReceiptData,
+  CleanerReceiptErrors,
+  CleanerReceiptResponses,
+  CleanerRollbackData,
+  CleanerRollbackErrors,
+  CleanerRollbackResponses,
   ClearBankMemoriesData,
   ClearBankMemoriesErrors,
   ClearBankMemoriesResponses,
@@ -318,6 +330,59 @@ export type Options<
    */
   meta?: Record<string, unknown>;
 };
+
+/**
+ * Api Cleaner Capabilities
+ */
+export const cleanerCapabilities = <ThrowOnError extends boolean = false>(
+  options: Options<CleanerCapabilitiesData, ThrowOnError>
+) =>
+  (options.client ?? client).get<
+    CleanerCapabilitiesResponses,
+    CleanerCapabilitiesErrors,
+    ThrowOnError
+  >({ url: "/v1/default/banks/{bank_id}/cleaner/capabilities", ...options });
+
+/**
+ * Api Cleaner Create
+ */
+export const cleanerCreate = <ThrowOnError extends boolean = false>(
+  options: Options<CleanerCreateData, ThrowOnError>
+) =>
+  (options.client ?? client).post<CleanerCreateResponses, CleanerCreateErrors, ThrowOnError>({
+    url: "/v1/default/banks/{bank_id}/cleaner/operations",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Api Cleaner Receipt
+ */
+export const cleanerReceipt = <ThrowOnError extends boolean = false>(
+  options: Options<CleanerReceiptData, ThrowOnError>
+) =>
+  (options.client ?? client).get<CleanerReceiptResponses, CleanerReceiptErrors, ThrowOnError>({
+    url: "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}",
+    ...options,
+  });
+
+/**
+ * Api Cleaner Rollback
+ */
+export const cleanerRollback = <ThrowOnError extends boolean = false>(
+  options: Options<CleanerRollbackData, ThrowOnError>
+) =>
+  (options.client ?? client).post<CleanerRollbackResponses, CleanerRollbackErrors, ThrowOnError>({
+    url: "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}/rollback",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
 
 /**
  * Health check endpoint

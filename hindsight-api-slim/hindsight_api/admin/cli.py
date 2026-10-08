@@ -61,6 +61,8 @@ BACKUP_TABLES = [
     "banks",
     # After "banks" for the same reason as "attachments" below: it FKs to it.
     "bank_aliases",
+    "cleaner_operations",
+    "cleaner_unit_ownership",
     # After "banks": attachments references it, so restore's forward COPY needs
     # the parent present, and the reversed TRUNCATE must clear the child first.
     "attachments",

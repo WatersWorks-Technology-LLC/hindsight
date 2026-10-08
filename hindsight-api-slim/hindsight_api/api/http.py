@@ -67,6 +67,15 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from hindsight_api import MemoryEngine
 from hindsight_api.config import RETAIN_EXTRACTION_MODES
 from hindsight_api.config_resolver import BankConfigPersistenceConflictError
+from hindsight_api.engine.cleaner_atomic import (
+    Capabilities,
+    CleanerConflict,
+    CreateRequest,
+    CreateResult,
+    DeleteResult,
+    Receipt,
+    RollbackRequest,
+)
 from hindsight_api.engine.retain.entity_labels import LabelGroup, _migrate_label_group
 
 
@@ -5467,6 +5476,44 @@ def _register_routes(app: FastAPI):
         health = await app.state.memory.health_check()
         status_code = 200 if health.get("status") == "healthy" else 503
         return JSONResponse(content=health, status_code=status_code)
+
+    @app.get("/v1/default/banks/{bank_id}/cleaner/capabilities", response_model=Capabilities,
+             operation_id="cleaner_capabilities", tags=["Cleaner"])
+    async def api_cleaner_capabilities(bank_id: str, request_context: RequestContext = Depends(get_request_context)):
+        return await app.state.memory.cleaner_capabilities(bank_id, request_context=request_context)
+
+    @app.post("/v1/default/banks/{bank_id}/cleaner/operations", response_model=CreateResult,
+              operation_id="cleaner_create", tags=["Cleaner"])
+    async def api_cleaner_create(bank_id: str, request: CreateRequest,
+                                 request_context: RequestContext = Depends(get_request_context)):
+        if request.condition.bank_id != bank_id:
+            raise HTTPException(status_code=422, detail="Bank scope mismatch")
+        try:
+            return await app.state.memory.cleaner_create(request, request_context=request_context)
+        except CleanerConflict:
+            raise HTTPException(status_code=409, detail="Reviewed cleaner precondition changed")
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Cleaner request binding invalid")
+
+    @app.get("/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}", response_model=Receipt,
+             operation_id="cleaner_receipt", tags=["Cleaner"])
+    async def api_cleaner_receipt(bank_id: str, operation_id: uuid.UUID,
+                                  request_context: RequestContext = Depends(get_request_context)):
+        result = await app.state.memory.cleaner_receipt(bank_id, operation_id, request_context=request_context)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Cleaner receipt unavailable")
+        return result
+
+    @app.post("/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}/rollback", response_model=DeleteResult,
+              operation_id="cleaner_rollback", tags=["Cleaner"])
+    async def api_cleaner_rollback(bank_id: str, operation_id: uuid.UUID, request: RollbackRequest,
+                                   request_context: RequestContext = Depends(get_request_context)):
+        if request.condition.bank_id != bank_id or request.condition.operation_id != operation_id:
+            raise HTTPException(status_code=422, detail="Operation scope mismatch")
+        try:
+            return await app.state.memory.cleaner_rollback(request, request_context=request_context)
+        except CleanerConflict:
+            raise HTTPException(status_code=409, detail="Reviewed rollback precondition changed")
 
     @app.get(
         "/health",

@@ -17,6 +17,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import uvicorn
@@ -173,8 +174,21 @@ def stub_environment(stub_url: str) -> dict[str, str]:
 
 
 def start_hindsight_server(
-    *, stub_url: str, log_path: Path, extra_env: dict[str, str] | None = None
+    *,
+    stub_url: str,
+    log_path: Path,
+    extra_env: dict[str, str] | None = None,
+    command: list[str] | None = None,
+    database_url: str | None = None,
 ) -> HindsightServer:
+    if database_url:
+        parsed = urlparse(database_url)
+        if (
+            parsed.scheme not in {"postgresql", "postgres"}
+            or parsed.hostname not in {"127.0.0.1", "localhost"}
+            or parsed.port in {None, 5432, 55438, 8888, 9999, 3200}
+        ):
+            raise ValueError("System tests require an explicitly isolated loopback database port")
     port = free_port()
 
     env = os.environ.copy()
@@ -194,7 +208,7 @@ def start_hindsight_server(
 
     env.update(
         {
-            "HINDSIGHT_API_DATABASE_URL": f"pg0://{PG0_INSTANCE}:{PG0_PORT}",
+            "HINDSIGHT_API_DATABASE_URL": database_url or f"pg0://{PG0_INSTANCE}:{PG0_PORT}",
             "HINDSIGHT_API_HOST": "127.0.0.1",
             "HINDSIGHT_API_PORT": str(port),
             "HINDSIGHT_API_LOG_LEVEL": "info",
@@ -221,7 +235,7 @@ def start_hindsight_server(
 
     log_file = log_path.open("w")
     process = subprocess.Popen(
-        ["uv", "run", "--project", str(API_DIR), "hindsight-api"],
+        command or ["uv", "run", "--project", str(API_DIR), "hindsight-api"],
         cwd=run_dir,
         env=env,
         stdout=log_file,

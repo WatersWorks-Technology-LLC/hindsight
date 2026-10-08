@@ -839,6 +839,7 @@ ENV_STORE_DOCUMENT_TEXT = "HINDSIGHT_API_STORE_DOCUMENT_TEXT"
 
 # Document transfer (export/import documents between banks without re-running the LLM)
 ENV_ENABLE_DOCUMENT_EXPORT_API = "HINDSIGHT_API_ENABLE_DOCUMENT_EXPORT_API"
+ENV_ENABLE_CLEANER_ATOMIC_WRITES = "HINDSIGHT_API_ENABLE_CLEANER_ATOMIC_WRITES"
 ENV_ENABLE_DOCUMENT_IMPORT_API = "HINDSIGHT_API_ENABLE_DOCUMENT_IMPORT_API"
 
 # Observations settings (consolidated knowledge from facts)
@@ -1705,6 +1706,7 @@ DEFAULT_STORE_DOCUMENT_TEXT = True  # Persist raw source text in documents.origi
 
 # Document transfer defaults (export/import enabled by default; gated independently)
 DEFAULT_ENABLE_DOCUMENT_EXPORT_API = True
+DEFAULT_ENABLE_CLEANER_ATOMIC_WRITES = False
 DEFAULT_ENABLE_DOCUMENT_IMPORT_API = True
 
 # Observations defaults (consolidated knowledge from facts)
@@ -3374,6 +3376,7 @@ class HindsightConfig:
     file_delete_after_retain: bool
     store_document_text: bool  # When False, store NULL original_text / empty chunk_text
     enable_document_export_api: bool
+    enable_cleaner_atomic_writes: bool
     enable_document_import_api: bool
 
     # Observations settings (consolidated knowledge from facts)
@@ -4979,6 +4982,9 @@ class HindsightConfig:
                 ENV_ENABLE_DOCUMENT_EXPORT_API, str(DEFAULT_ENABLE_DOCUMENT_EXPORT_API)
             ).lower()
             == "true",
+            enable_cleaner_atomic_writes=os.getenv(
+                ENV_ENABLE_CLEANER_ATOMIC_WRITES, str(DEFAULT_ENABLE_CLEANER_ATOMIC_WRITES)
+            ).lower() == "true",
             enable_document_import_api=os.getenv(
                 ENV_ENABLE_DOCUMENT_IMPORT_API, str(DEFAULT_ENABLE_DOCUMENT_IMPORT_API)
             ).lower()

@@ -1,172 +1,28 @@
-import type { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-const service = vi.hoisted(() => ({
-  prepare: vi.fn(),
-  get: vi.fn(),
-  latest: vi.fn(),
-  confirm: vi.fn(),
-  cancel: vi.fn(),
-  rollbackPlan: vi.fn(),
-}));
-vi.mock("@/lib/cleaner-import", () => ({
-  importService: service,
-  planView: (p: unknown) => p,
-  operationView: (p: unknown) => p,
-}));
-vi.mock("@/lib/cleaner-jobs", () => ({
-  validBank: (b: unknown) => typeof b === "string" && b.length > 0,
-}));
-import { GET, POST } from "@/app/api/cleaner/import/route";
-const plan = {
-  id: "plan",
-  bank_id: "bank",
-  status: "blocked",
-  reason: "Verified atomic guard required",
-};
-function request(url = "http://localhost/api/cleaner/import", init: RequestInit = {}): NextRequest {
-  return Object.assign(new Request(url, init), { nextUrl: new URL(url) }) as unknown as NextRequest;
-}
-function post(input: unknown) {
-  return POST(request(undefined, { method: "POST", body: JSON.stringify(input) }));
-}
-const confirmation = {
-  plan_id: "plan",
-  bank_confirmation: "bank",
-  plan_hash: "hash",
-  confirmation_token: "token",
-  acknowledged: true,
-};
-describe("guarded candidate import endpoint", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    service.get.mockResolvedValue(plan);
-    service.prepare.mockResolvedValue(plan);
-    service.confirm.mockResolvedValue({ operation_id: "plan", status: "running" });
-    service.rollbackPlan.mockResolvedValue({ status: "blocked", available: false });
-  });
-  it("rejects foreign origin, fetch-site and remote hosts before reading saved plans", async () => {
-    for (const init of [
-      { headers: { origin: "https://foreign.example" } },
-      { headers: { "sec-fetch-site": "cross-site" } },
-    ] as RequestInit[])
-      expect((await POST(request(undefined, { ...init, method: "POST", body: "{}" }))).status).toBe(
-        403
-      );
-    expect((await GET(request("http://remote.example/api/cleaner/import?plan=plan"))).status).toBe(
-      403
-    );
-    expect(service.get).not.toHaveBeenCalled();
-  });
-  it("bounds streamed bytes even with false content length", async () => {
-    expect(
-      (
-        await POST(
-          request(undefined, {
-            method: "POST",
-            headers: { "content-length": "1" },
-            body: "x".repeat(17 * 1024),
-          })
-        )
-      ).status
-    ).toBe(409);
-    expect(service.prepare).not.toHaveBeenCalled();
-    expect(service.confirm).not.toHaveBeenCalled();
-  });
-  it("passes explicit source indexes to dry-run and exposes blocked result without confirming", async () => {
-    const result = await post({
-      action: "plan",
-      bank_id: "bank",
-      job_id: "job",
-      document_indexes: [0, 26],
-    });
-    expect(result.status).toBe(200);
-    expect(await result.json()).toEqual(plan);
-    expect(service.prepare).toHaveBeenCalledWith("job", "bank", [0, 26]);
-    expect(service.confirm).not.toHaveBeenCalled();
-  });
-  it("requires explicit bank source for planning", async () => {
-    expect((await post({ action: "plan", job_id: "job", document_indexes: [0] })).status).toBe(400);
-    expect(service.prepare).not.toHaveBeenCalled();
-  });
-  it("requires every explicit confirmation field including boolean acknowledgment", async () => {
-    for (const key of ["bank_confirmation", "plan_hash", "confirmation_token", "acknowledged"]) {
-      const input: Record<string, unknown> = { action: "confirm", ...confirmation };
-      delete input[key];
-      expect((await post(input)).status).toBe(400);
-    }
-    expect((await post({ action: "confirm", ...confirmation, acknowledged: "true" })).status).toBe(
-      400
-    );
-    expect(service.confirm).not.toHaveBeenCalled();
-  });
-  it("binds confirmation and reconciliation to exact saved plan evidence", async () => {
-    expect((await post({ action: "confirm", ...confirmation })).status).toBe(202);
-    expect(service.confirm).toHaveBeenLastCalledWith(
-      "plan",
-      {
-        bank_confirmation: "bank",
-        plan_hash: "hash",
-        confirmation_token: "token",
-        acknowledged: true,
-      },
-      false
-    );
-    await post({ action: "reconcile", ...confirmation });
-    expect(service.confirm).toHaveBeenLastCalledWith(
-      "plan",
-      {
-        bank_confirmation: "bank",
-        plan_hash: "hash",
-        confirmation_token: "token",
-        acknowledged: true,
-      },
-      true
-    );
-  });
-  it("fails closed on guard/integrity refusal without exposing backend details", async () => {
-    service.confirm.mockRejectedValue(new Error("private secret=value"));
-    const result = await post({ action: "confirm", ...confirmation });
-    expect(result.status).toBe(409);
-    expect(JSON.stringify(await result.json())).not.toContain("secret=value");
-  });
-  it("rejects missing plans and unsupported mutation actions", async () => {
-    service.get.mockResolvedValueOnce(undefined);
-    expect((await post({ action: "confirm", ...confirmation })).status).toBe(404);
-    expect((await post({ action: "delete", plan_id: "plan" })).status).toBe(400);
-    expect(service.confirm).not.toHaveBeenCalled();
-    expect(service.cancel).not.toHaveBeenCalled();
-  });
-  it("cancels local saved operation without accepting arbitrary bank targets", async () => {
-    expect((await post({ action: "cancel", plan_id: "plan" })).status).toBe(200);
-    expect(service.cancel).toHaveBeenCalledWith("plan");
-    expect(service.confirm).not.toHaveBeenCalled();
-  });
-  it("requires bank for read-only rollback preview and never routes it to confirmation", async () => {
-    expect((await post({ action: "rollback_plan", plan_id: "plan" })).status).toBe(400);
-    const result = await post({ action: "rollback_plan", plan_id: "plan", bank_id: "bank" });
-    expect(await result.json()).toEqual({ status: "blocked", available: false });
-    expect(service.rollbackPlan).toHaveBeenCalledWith("plan", "bank");
-    expect(service.confirm).not.toHaveBeenCalled();
-  });
-  it("rejects bank-mismatched recovery and suppresses response caching", async () => {
-    expect(
-      (await GET(request("http://localhost/api/cleaner/import?plan=plan&bank_id=other"))).status
-    ).toBe(403);
-    const response = await GET(
-      request("http://localhost/api/cleaner/import?plan=plan&bank_id=bank")
-    );
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ plan, operation: plan });
-  });
-  it("discovers only the explicit job and bank and reports missing saved state", async () => {
-    service.latest.mockResolvedValue(plan);
-    expect(
-      (await GET(request("http://localhost/api/cleaner/import?job=job&bank_id=bank"))).status
-    ).toBe(200);
-    expect(service.latest).toHaveBeenCalledWith("job", "bank");
-    service.get.mockResolvedValue(undefined);
-    expect((await GET(request("http://localhost/api/cleaner/import?plan=missing"))).status).toBe(
-      404
-    );
-  });
+import type { NextRequest } from 'next/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+const service=vi.hoisted(()=>({prepare:vi.fn(),get:vi.fn(),latest:vi.fn(),confirm:vi.fn(),cancel:vi.fn(),rollbackPlan:vi.fn()}));
+vi.mock('@/lib/cleaner-import',()=>({importService:service,planView:(p:unknown)=>p,operationView:(p:unknown)=>p}));
+vi.mock('@/lib/cleaner-jobs',()=>({validBank:(b:unknown)=>typeof b==='string'&&b.length>0}));
+import { GET, POST } from '@/app/api/cleaner/import/route';
+const plan={id:'plan',bank_id:'bank',status:'blocked',reason:'Verified atomic guard required'};
+function request(url='http://localhost/api/cleaner/import',init:RequestInit={}):NextRequest{return Object.assign(new Request(url,init),{nextUrl:new URL(url)}) as unknown as NextRequest;}
+function post(input:unknown){return POST(request(undefined,{method:'POST',body:JSON.stringify(input)}));}
+const confirmation={plan_id:'plan',bank_confirmation:'bank',plan_hash:'hash',confirmation_token:'token',acknowledged:true};
+describe('guarded candidate import endpoint',()=>{
+ beforeEach(()=>{vi.resetAllMocks();service.get.mockResolvedValue(plan);service.prepare.mockResolvedValue(plan);service.confirm.mockResolvedValue({operation_id:'plan',status:'running'});service.rollbackPlan.mockResolvedValue({status:'blocked',available:false});});
+ it('rejects foreign origin, fetch-site and remote hosts before reading saved plans',async()=>{
+  for(const init of ([{headers:{origin:'https://foreign.example'}},{headers:{'sec-fetch-site':'cross-site'}}] as RequestInit[]))expect((await POST(request(undefined,{...init,method:'POST',body:'{}'}))).status).toBe(403);
+  expect((await GET(request('http://remote.example/api/cleaner/import?plan=plan'))).status).toBe(403);expect(service.get).not.toHaveBeenCalled();
+ });
+ it('bounds streamed bytes even with false content length',async()=>{expect((await POST(request(undefined,{method:'POST',headers:{'content-length':'1'},body:'x'.repeat(17*1024)}))).status).toBe(409);expect(service.prepare).not.toHaveBeenCalled();expect(service.confirm).not.toHaveBeenCalled();});
+ it('passes explicit source indexes to dry-run and exposes blocked result without confirming',async()=>{const result=await post({action:'plan',bank_id:'bank',job_id:'job',document_indexes:[0,26]});expect(result.status).toBe(200);expect(await result.json()).toEqual(plan);expect(service.prepare).toHaveBeenCalledWith('job','bank',[0,26]);expect(service.confirm).not.toHaveBeenCalled();});
+ it('requires explicit bank source for planning',async()=>{expect((await post({action:'plan',job_id:'job',document_indexes:[0]})).status).toBe(400);expect(service.prepare).not.toHaveBeenCalled();});
+ it('requires every explicit confirmation field including boolean acknowledgment',async()=>{for(const key of ['bank_confirmation','plan_hash','confirmation_token','acknowledged']){const input:Record<string,unknown>={action:'confirm',...confirmation};delete input[key];expect((await post(input)).status).toBe(400);}expect((await post({action:'confirm',...confirmation,acknowledged:'true'})).status).toBe(400);expect(service.confirm).not.toHaveBeenCalled();});
+ it('binds confirmation and reconciliation to exact saved plan evidence',async()=>{expect((await post({action:'confirm',...confirmation})).status).toBe(202);expect(service.confirm).toHaveBeenLastCalledWith('plan',{bank_confirmation:'bank',plan_hash:'hash',confirmation_token:'token',acknowledged:true},false);await post({action:'reconcile',...confirmation});expect(service.confirm).toHaveBeenLastCalledWith('plan',{bank_confirmation:'bank',plan_hash:'hash',confirmation_token:'token',acknowledged:true},true);});
+ it('fails closed on guard/integrity refusal without exposing backend details',async()=>{service.confirm.mockRejectedValue(new Error('private secret=value'));const result=await post({action:'confirm',...confirmation});expect(result.status).toBe(409);expect(JSON.stringify(await result.json())).not.toContain('secret=value');});
+ it('rejects missing plans and unsupported mutation actions',async()=>{service.get.mockResolvedValueOnce(undefined);expect((await post({action:'confirm',...confirmation})).status).toBe(404);expect((await post({action:'delete',plan_id:'plan'})).status).toBe(400);expect(service.confirm).not.toHaveBeenCalled();expect(service.cancel).not.toHaveBeenCalled();});
+ it('cancels local saved operation without accepting arbitrary bank targets',async()=>{expect((await post({action:'cancel',plan_id:'plan'})).status).toBe(200);expect(service.cancel).toHaveBeenCalledWith('plan');expect(service.confirm).not.toHaveBeenCalled();});
+ it('requires bank for read-only rollback preview and never routes it to confirmation',async()=>{expect((await post({action:'rollback_plan',plan_id:'plan'})).status).toBe(400);const result=await post({action:'rollback_plan',plan_id:'plan',bank_id:'bank'});expect(await result.json()).toEqual({status:'blocked',available:false});expect(service.rollbackPlan).toHaveBeenCalledWith('plan','bank');expect(service.confirm).not.toHaveBeenCalled();});
+ it('rejects bank-mismatched recovery and suppresses response caching',async()=>{expect((await GET(request('http://localhost/api/cleaner/import?plan=plan&bank_id=other'))).status).toBe(403);const response=await GET(request('http://localhost/api/cleaner/import?plan=plan&bank_id=bank'));expect(response.headers.get('cache-control')).toBe('no-store');expect(await response.json()).toEqual({plan,operation:plan});});
+ it('discovers only the explicit job and bank and reports missing saved state',async()=>{service.latest.mockResolvedValue(plan);expect((await GET(request('http://localhost/api/cleaner/import?job=job&bank_id=bank'))).status).toBe(200);expect(service.latest).toHaveBeenCalledWith('job','bank');service.get.mockResolvedValue(undefined);expect((await GET(request('http://localhost/api/cleaner/import?plan=missing'))).status).toBe(404);});
 });

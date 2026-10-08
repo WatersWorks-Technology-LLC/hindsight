@@ -5,23 +5,19 @@ package hindsight
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 )
 
 func apiURL(t *testing.T) string {
 	t.Helper()
-	u := os.Getenv("HINDSIGHT_API_URL")
-	if u == "" {
-		u = "http://localhost:8888"
-	}
-	return u
+	return isolatedSDKTestURL(t)
 }
 
 func newClient(t *testing.T) *APIClient {
 	t.Helper()
 	cfg := NewConfiguration()
+	cfg.HTTPClient = isolatedSDKHTTPClient()
 	cfg.Servers = ServerConfigurations{
 		{URL: apiURL(t)},
 	}

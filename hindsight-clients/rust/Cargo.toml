@@ -12,6 +12,8 @@ categories = ["api-bindings"]
 [dependencies]
 # Security: bytes >= 1.11.1 fixes integer overflow in BytesMut::reserve (GHSA-...)
 bytes = "1.11.1"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+regress = "0.10"
 # HTTP client
 reqwest = { version = "0.12", features = ["json"] }
 # Async runtime
@@ -32,7 +34,7 @@ url = "2.5"
 
 [dev-dependencies]
 tokio-test = "0.4"
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
 [build-dependencies]
 progenitor = "0.11"

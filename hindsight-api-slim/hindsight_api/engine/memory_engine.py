@@ -590,6 +590,7 @@ if TYPE_CHECKING:
     from ..webhooks.url_guard import GuardedWebhookClient
     from . import bank_aliases as bank_aliases_mod
     from .audit import AuditLogListResponse, AuditLogStatsResponse
+    from .cleaner_atomic import Capabilities, CreateRequest, CreateResult, DeleteResult, Receipt, RollbackRequest
     from .memories import MemoriesExtension, MemoryScopeWatermark
     from .prompt_preview import PromptPreview
     from .retain.attachment_content import LoadedAttachment, RetainAttachment
@@ -23680,3 +23681,19 @@ class MemoryEngine(MemoryEngineInterface):
             "Mental model refresh requires an LLM provider. Current provider is set to 'none'. "
             "Set HINDSIGHT_API_LLM_PROVIDER to a real provider (e.g., openai, anthropic, gemini)."
         )
+
+    async def cleaner_capabilities(self, bank_id: str, *, request_context: "RequestContext") -> "Capabilities":
+        from .cleaner_atomic import capabilities
+        return await capabilities(self, bank_id, request_context)
+
+    async def cleaner_create(self, request: "CreateRequest", *, request_context: "RequestContext") -> "CreateResult":
+        from .cleaner_atomic import engine_create
+        return await engine_create(self, request, request_context)
+
+    async def cleaner_rollback(self, request: "RollbackRequest", *, request_context: "RequestContext") -> "DeleteResult":
+        from .cleaner_atomic import engine_rollback
+        return await engine_rollback(self, request, request_context)
+
+    async def cleaner_receipt(self, bank_id: str, operation_id: "UUID", *, request_context: "RequestContext") -> "Receipt | None":
+        from .cleaner_atomic import engine_receipt
+        return await engine_receipt(self, bank_id, operation_id, request_context)

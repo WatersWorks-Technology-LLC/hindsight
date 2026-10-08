@@ -1125,6 +1125,32 @@ export type CancelOperationResponse = {
 };
 
 /**
+ * Capabilities
+ */
+export type Capabilities = {
+  /**
+   * Atomic Create
+   */
+  atomic_create: boolean;
+  /**
+   * Atomic Source Check
+   */
+  atomic_source_check: boolean;
+  /**
+   * Conditional Delete
+   */
+  conditional_delete: boolean;
+  /**
+   * Contract Id
+   */
+  contract_id?: string;
+  /**
+   * Reason
+   */
+  reason?: string | null;
+};
+
+/**
  * ChildOperationStatus
  *
  * Status of a child operation (for batch operations).
@@ -1296,6 +1322,56 @@ export type ClearMemoryObservationsResponse = {
    * Deleted Count
    */
   deleted_count: number;
+};
+
+/**
+ * Condition
+ */
+export type Condition = {
+  /**
+   * Execution Config Sha256
+   */
+  execution_config_sha256: string;
+  /**
+   * Bank Id
+   */
+  bank_id: string;
+  /**
+   * Source Id
+   */
+  source_id: string;
+  /**
+   * Source Sha256
+   */
+  source_sha256: string;
+  /**
+   * Source Updated At
+   */
+  source_updated_at: string;
+  /**
+   * Source Metadata Sha256
+   */
+  source_metadata_sha256: string;
+  /**
+   * Target Id
+   */
+  target_id: string;
+  /**
+   * Target Sha256
+   */
+  target_sha256: string;
+  /**
+   * Owner Key
+   */
+  owner_key: string;
+  /**
+   * Operation Id
+   */
+  operation_id: string;
+  /**
+   * Payload Sha256
+   */
+  payload_sha256: string;
 };
 
 /**
@@ -1772,6 +1848,35 @@ export type CreatePageRequest = {
 };
 
 /**
+ * CreateRequest
+ */
+export type CreateRequest = {
+  condition: Condition;
+  /**
+   * Payload Json
+   */
+  payload_json: string;
+};
+
+/**
+ * CreateResult
+ */
+export type CreateResult = {
+  /**
+   * Accepted
+   */
+  accepted?: true;
+  /**
+   * Operation Id
+   */
+  operation_id: string;
+  /**
+   * Reused
+   */
+  reused?: boolean;
+};
+
+/**
  * CreateWebhookRequest
  *
  * Request model for registering a webhook.
@@ -1889,6 +1994,20 @@ export type DeleteResponse = {
    * Deleted Count
    */
   deleted_count?: number | null;
+};
+
+/**
+ * DeleteResult
+ */
+export type DeleteResult = {
+  /**
+   * Deleted
+   */
+  deleted?: true;
+  /**
+   * Rollback Operation Id
+   */
+  rollback_operation_id: string;
 };
 
 /**
@@ -5711,6 +5830,68 @@ export type RecallScores = {
 };
 
 /**
+ * Receipt
+ */
+export type Receipt = {
+  /**
+   * Condition Sha256
+   */
+  condition_sha256: string;
+  /**
+   * Operation Id
+   */
+  operation_id: string;
+  /**
+   * Payload Sha256
+   */
+  payload_sha256: string;
+  /**
+   * Target Id
+   */
+  target_id: string;
+  /**
+   * Owner Key
+   */
+  owner_key: string;
+  /**
+   * Target Sha256
+   */
+  target_sha256: string;
+  /**
+   * Metadata Sha256
+   */
+  metadata_sha256: string;
+  /**
+   * Graph Sha256
+   */
+  graph_sha256: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Status
+   */
+  status?: "completed" | "rolled_back";
+  /**
+   * Created
+   */
+  created?: true;
+  /**
+   * Rollback Operation Id
+   */
+  rollback_operation_id: string | null;
+  /**
+   * Rollback Payload Sha256
+   */
+  rollback_payload_sha256: string | null;
+  /**
+   * Created Receipt Sha256
+   */
+  created_receipt_sha256: string | null;
+};
+
+/**
  * RecoverConsolidationResponse
  *
  * Response model for recovering failed consolidation.
@@ -6257,6 +6438,33 @@ export type RetryOperationResponse = {
    * Operation Id
    */
   operation_id: string;
+};
+
+/**
+ * RollbackRequest
+ */
+export type RollbackRequest = {
+  condition: Condition;
+  /**
+   * Expected Updated At
+   */
+  expected_updated_at: string;
+  /**
+   * Rollback Operation Id
+   */
+  rollback_operation_id: string;
+  /**
+   * Rollback Payload Sha256
+   */
+  rollback_payload_sha256: string;
+  /**
+   * Created Receipt Sha256
+   */
+  created_receipt_sha256: string;
+  /**
+   * Expected Document Metadata Sha256
+   */
+  expected_document_metadata_sha256: string;
 };
 
 /**
@@ -7105,6 +7313,159 @@ export type WebhookResponse = {
    */
   updated_at?: string | null;
 };
+
+export type CleanerCapabilitiesData = {
+  body?: never;
+  headers?: {
+    /**
+     * Authorization
+     */
+    authorization?: string | null;
+  };
+  path: {
+    /**
+     * Bank Id
+     */
+    bank_id: string;
+  };
+  query?: never;
+  url: "/v1/default/banks/{bank_id}/cleaner/capabilities";
+};
+
+export type CleanerCapabilitiesErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CleanerCapabilitiesError = CleanerCapabilitiesErrors[keyof CleanerCapabilitiesErrors];
+
+export type CleanerCapabilitiesResponses = {
+  /**
+   * Successful Response
+   */
+  200: Capabilities;
+};
+
+export type CleanerCapabilitiesResponse =
+  CleanerCapabilitiesResponses[keyof CleanerCapabilitiesResponses];
+
+export type CleanerCreateData = {
+  body: CreateRequest;
+  headers?: {
+    /**
+     * Authorization
+     */
+    authorization?: string | null;
+  };
+  path: {
+    /**
+     * Bank Id
+     */
+    bank_id: string;
+  };
+  query?: never;
+  url: "/v1/default/banks/{bank_id}/cleaner/operations";
+};
+
+export type CleanerCreateErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CleanerCreateError = CleanerCreateErrors[keyof CleanerCreateErrors];
+
+export type CleanerCreateResponses = {
+  /**
+   * Successful Response
+   */
+  200: CreateResult;
+};
+
+export type CleanerCreateResponse = CleanerCreateResponses[keyof CleanerCreateResponses];
+
+export type CleanerReceiptData = {
+  body?: never;
+  headers?: {
+    /**
+     * Authorization
+     */
+    authorization?: string | null;
+  };
+  path: {
+    /**
+     * Bank Id
+     */
+    bank_id: string;
+    /**
+     * Operation Id
+     */
+    operation_id: string;
+  };
+  query?: never;
+  url: "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}";
+};
+
+export type CleanerReceiptErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CleanerReceiptError = CleanerReceiptErrors[keyof CleanerReceiptErrors];
+
+export type CleanerReceiptResponses = {
+  /**
+   * Successful Response
+   */
+  200: Receipt;
+};
+
+export type CleanerReceiptResponse = CleanerReceiptResponses[keyof CleanerReceiptResponses];
+
+export type CleanerRollbackData = {
+  body: RollbackRequest;
+  headers?: {
+    /**
+     * Authorization
+     */
+    authorization?: string | null;
+  };
+  path: {
+    /**
+     * Bank Id
+     */
+    bank_id: string;
+    /**
+     * Operation Id
+     */
+    operation_id: string;
+  };
+  query?: never;
+  url: "/v1/default/banks/{bank_id}/cleaner/operations/{operation_id}/rollback";
+};
+
+export type CleanerRollbackErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CleanerRollbackError = CleanerRollbackErrors[keyof CleanerRollbackErrors];
+
+export type CleanerRollbackResponses = {
+  /**
+   * Successful Response
+   */
+  200: DeleteResult;
+};
+
+export type CleanerRollbackResponse = CleanerRollbackResponses[keyof CleanerRollbackResponses];
 
 export type HealthEndpointHealthGetData = {
   body?: never;

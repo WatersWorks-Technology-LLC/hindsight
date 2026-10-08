@@ -150,6 +150,18 @@ if [ -d "$GEN_TMP_DIR/.openapi-generator" ]; then
     cp -R "$GEN_TMP_DIR/.openapi-generator" "$PYTHON_CLIENT_DIR/"
 fi
 
+# OpenAPI Generator 7.10.0 incorrectly emits string enums for boolean consts.
+# Keep the generated SDK strict while accepting the API's boolean wire values.
+python3 - "$PYTHON_CLIENT_DIR" <<'PYFIX'
+import pathlib
+import sys
+for name in ("create_result", "delete_result", "receipt"):
+    path = pathlib.Path(sys.argv[1]) / "hindsight_client_api/models" / (name + ".py")
+    if path.exists():
+        text = path.read_text()
+        path.write_text(text.replace("set(['true'])", "set([True])").replace("enum values ('true')", "enum values (True)"))
+PYFIX
+
 echo "Organizing generated files..."
 
 # The generator creates files directly, we need to ensure proper structure

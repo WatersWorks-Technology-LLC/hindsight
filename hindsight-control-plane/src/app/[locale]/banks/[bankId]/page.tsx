@@ -8,6 +8,7 @@ import { BankSelector } from "@/components/bank-selector";
 import { Sidebar } from "@/components/sidebar";
 import { DataView } from "@/components/data-view";
 import { DocumentsView } from "@/components/documents-view";
+import { CleanerView } from "@/components/cleaner-view";
 import { EntitiesView } from "@/components/entities-view";
 import { KnowledgeBaseView } from "@/components/knowledge-base-view";
 import { HomeView } from "@/components/home-view";
@@ -75,6 +76,7 @@ type NavItem =
   | "reflect"
   | "data"
   | "documents"
+  | "cleaner"
   | "entities"
   | "knowledge"
   | "profile";
@@ -745,6 +747,7 @@ export default function BankPage() {
 
               {/* Documents Tab — DocumentsView renders its own title row so the
                 Export/Import Actions menu can sit beside the heading. */}
+              {view === "cleaner" && <CleanerView />}
               {view === "documents" && (
                 <div>
                   <DocumentsView />

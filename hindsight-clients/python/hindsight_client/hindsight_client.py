@@ -47,6 +47,7 @@ ContentBlock = dict[str, Any]
 from hindsight_client_api.api import (
     bank_transfer_api,
     banks_api,
+    cleaner_api,
     directives_api,
     document_transfer_api,
     documents_api,
@@ -298,6 +299,7 @@ class Hindsight:
             self._api_client.set_default_header("Authorization", f"Bearer {api_key}")
         self._memory_api = memory_api.MemoryApi(self._api_client)
         self._banks_api = banks_api.BanksApi(self._api_client)
+        self._cleaner_api = cleaner_api.CleanerApi(self._api_client)
         self._mental_models_api = mental_models_api.MentalModelsApi(self._api_client)
         self._knowledge_base_api = knowledge_base_api.KnowledgeBaseApi(self._api_client)
         self._directives_api = directives_api.DirectivesApi(self._api_client)
@@ -358,6 +360,11 @@ class Hindsight:
     def banks(self) -> banks_api.BanksApi:
         """Low-level Banks API — create, update, delete banks; stats; consolidation; config."""
         return self._banks_api
+
+    @property
+    def cleaner(self) -> cleaner_api.CleanerApi:
+        """Guarded cleaner API — capabilities, create-only imports, receipts and rollback."""
+        return self._cleaner_api
 
     @property
     def documents(self) -> documents_api.DocumentsApi:

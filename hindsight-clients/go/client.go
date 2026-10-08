@@ -45,7 +45,9 @@ var (
 // In most cases there should be only one, shared, APIClient.
 type APIClient struct {
 	cfg    *Configuration
-	common service // Reuse a single struct instead of allocating one for each service on the heap.
+	common service
+	CleanerAPI *CleanerAPIService
+ // Reuse a single struct instead of allocating one for each service on the heap.
 
 	// API Services
 
@@ -114,6 +116,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.MonitoringAPI = (*MonitoringAPIService)(&c.common)
 	c.OperationsAPI = (*OperationsAPIService)(&c.common)
 	c.WebhooksAPI = (*WebhooksAPIService)(&c.common)
+	c.CleanerAPI = (*CleanerAPIService)(&c.common)
 
 	return c
 }

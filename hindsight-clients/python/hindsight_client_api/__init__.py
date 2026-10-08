@@ -21,6 +21,7 @@ from hindsight_client_api.api.audit_api import AuditApi
 from hindsight_client_api.api.bank_templates_api import BankTemplatesApi
 from hindsight_client_api.api.bank_transfer_api import BankTransferApi
 from hindsight_client_api.api.banks_api import BanksApi
+from hindsight_client_api.api.cleaner_api import CleanerApi
 from hindsight_client_api.api.directives_api import DirectivesApi
 from hindsight_client_api.api.document_transfer_api import DocumentTransferApi
 from hindsight_client_api.api.documents_api import DocumentsApi
@@ -71,12 +72,14 @@ from hindsight_client_api.models.bank_transfer_submit_response import BankTransf
 from hindsight_client_api.models.base64_attachment_source import Base64AttachmentSource
 from hindsight_client_api.models.budget import Budget
 from hindsight_client_api.models.cancel_operation_response import CancelOperationResponse
+from hindsight_client_api.models.capabilities import Capabilities
 from hindsight_client_api.models.child_operation_status import ChildOperationStatus
 from hindsight_client_api.models.chunk_attachment import ChunkAttachment
 from hindsight_client_api.models.chunk_data import ChunkData
 from hindsight_client_api.models.chunk_include_options import ChunkIncludeOptions
 from hindsight_client_api.models.chunk_response import ChunkResponse
 from hindsight_client_api.models.clear_memory_observations_response import ClearMemoryObservationsResponse
+from hindsight_client_api.models.condition import Condition
 from hindsight_client_api.models.consolidation_request import ConsolidationRequest
 from hindsight_client_api.models.consolidation_response import ConsolidationResponse
 from hindsight_client_api.models.consolidation_scope_pattern import ConsolidationScopePattern
@@ -93,11 +96,14 @@ from hindsight_client_api.models.create_knowledge_page_response import CreateKno
 from hindsight_client_api.models.create_mental_model_request import CreateMentalModelRequest
 from hindsight_client_api.models.create_mental_model_response import CreateMentalModelResponse
 from hindsight_client_api.models.create_page_request import CreatePageRequest
+from hindsight_client_api.models.create_request import CreateRequest
+from hindsight_client_api.models.create_result import CreateResult
 from hindsight_client_api.models.create_webhook_request import CreateWebhookRequest
 from hindsight_client_api.models.default_scopes_preview import DefaultScopesPreview
 from hindsight_client_api.models.delete_document_response import DeleteDocumentResponse
 from hindsight_client_api.models.delete_operation_response import DeleteOperationResponse
 from hindsight_client_api.models.delete_response import DeleteResponse
+from hindsight_client_api.models.delete_result import DeleteResult
 from hindsight_client_api.models.directive_list_response import DirectiveListResponse
 from hindsight_client_api.models.directive_response import DirectiveResponse
 from hindsight_client_api.models.disposition_traits import DispositionTraits
@@ -194,6 +200,7 @@ from hindsight_client_api.models.recall_request import RecallRequest
 from hindsight_client_api.models.recall_response import RecallResponse
 from hindsight_client_api.models.recall_result import RecallResult
 from hindsight_client_api.models.recall_scores import RecallScores
+from hindsight_client_api.models.receipt import Receipt
 from hindsight_client_api.models.recover_consolidation_response import RecoverConsolidationResponse
 from hindsight_client_api.models.reflect_based_on import ReflectBasedOn
 from hindsight_client_api.models.reflect_directive import ReflectDirective
@@ -210,6 +217,7 @@ from hindsight_client_api.models.reprocess_document_response import ReprocessDoc
 from hindsight_client_api.models.retain_request import RetainRequest
 from hindsight_client_api.models.retain_response import RetainResponse
 from hindsight_client_api.models.retry_operation_response import RetryOperationResponse
+from hindsight_client_api.models.rollback_request import RollbackRequest
 from hindsight_client_api.models.run_setting_model import RunSettingModel
 from hindsight_client_api.models.set_bank_alias_primary_request import SetBankAliasPrimaryRequest
 from hindsight_client_api.models.source_facts_include_options import SourceFactsIncludeOptions

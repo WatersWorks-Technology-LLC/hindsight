@@ -10,6 +10,8 @@ import {
   resolveDateRangePreset,
 } from "@/lib/date-range-preset";
 import { useBank } from "@/lib/bank-context";
+import Link from "next/link";
+import { bankRoute } from "@/lib/bank-url";
 import { useFeatures } from "@/lib/features-context";
 import { DataView } from "./data-view";
 import { TraceDialog } from "./llm-requests-view";
@@ -1363,6 +1365,7 @@ export function DocumentsView() {
         <div>
           <h1 className="text-3xl font-bold mb-2 text-foreground">{tBank("documents")}</h1>
           <p className="text-muted-foreground">{tBank("documentsDescription")}</p>
+          {currentBank && <Link className="inline-block mt-3 text-sm text-primary underline" href={bankRoute(currentBank, "?view=cleaner")}>Preview document cleaning</Link>}
         </div>
         {(canExport || canImport) && (
           <DropdownMenu>
